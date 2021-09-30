@@ -1,7 +1,7 @@
 import numpy as np
 import argparse
 import os
-from policyalgos import valueIteration, howardPolicyIteration
+from policyalgos import valueIteration, howardPolicyIteration, linearProgramming
 
 def parseMDP(mdpfile):
     data = None
@@ -44,7 +44,7 @@ if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--mdp", required=True, type=str)
-    parser.add_argument("--algorithm", '-a', required=False, type=str, default='all')
+    parser.add_argument("--algorithm", '-a', required=False, type=str, default='lp')
     args = parser.parse_args()
     mdpfile = args.mdp
     algo = args.algorithm
@@ -58,7 +58,6 @@ if __name__=='__main__':
         Vs, Pis = howardPolicyIteration(mdp_data)
         printData(Vs, Pis)
     elif algo=='lp':
-        print('linear programming')
-    else:
-        print(mdp_data, 'all')
+        Vs, Pis = linearProgramming(mdp_data)
+        printData(Vs, Pis)
     

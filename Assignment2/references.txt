@@ -1,0 +1,2 @@
+1. https://coin-or.github.io/pulp/CaseStudies/a_blending_problem.html
+2. https://stackoverflow.com/questions/56412471/solving-lp-using-pulp-with-numpy-array

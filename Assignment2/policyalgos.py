@@ -1,5 +1,7 @@
 import numpy as np
-import pulp
+import pulp as pl
+from pulp.apis.coin_api import PULP_CBC_CMD
+from pulp.constants import LpMaximize
 
 def valueIteration(mdp_data):
     np.random.seed(1)
@@ -70,4 +72,37 @@ def howardPolicyIteration(mdp_data):
             Vs[termS] = 0
             Pis[termS] = 0
         t+=1
+    return Vs, Pis
+
+def linearProgramming(mdp_data):
+    np.random.seed(30)
+    sizeA = mdp_data['numActions']
+    sizeS = mdp_data['numStates']
+    flag = True if mdp_data['type']=='episodic' else False
+    termS = mdp_data['termStates']
+    Tr = mdp_data['tranProb']
+    Re = mdp_data['rewards']
+    gamma = mdp_data['gamma']
+    
+    problem = pl.LpProblem("MDP_Problem", LpMaximize)
+    # declaring all the variables
+    Vp = pl.LpVariable.dicts("Vs", range(0, sizeS), cat='Continuous')
+
+    # objective function
+    problem += -pl.lpSum([Vp[i] for i in range(0, sizeS)])
+
+    # constraints
+    for s in range(sizeS):
+        for a in range(sizeA):
+            problem += pl.lpSum([Tr[s][a][i]*(Re[s][a][i] + gamma*Vp[i]) for i in range(sizeS)]) <= Vp[s]
+    
+    if flag:
+        for i in termS:
+            problem += Vp[i]==0
+    
+    problem.solve(PULP_CBC_CMD(msg=0))
+
+    Vs = np.array([Vp[i].varValue for i in range(sizeS)])
+    Pis = np.argmax(np.sum(Tr*(Re + gamma*Vs), axis=2), axis=1)
+
     return Vs, Pis
