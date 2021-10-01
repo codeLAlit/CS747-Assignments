@@ -13,19 +13,32 @@ def valueIteration(mdp_data):
     Re = mdp_data['rewards']
     gamma = mdp_data['gamma']
     Vp = np.zeros(sizeS)
-    Pis = np.zeros(sizeS)
+    Pis = np.zeros(sizeS, dtype='int')
     Vs = np.random.random(sizeS)
+
     if flag:
         Vs[termS] = 0
 
     t = 0
+
     while(np.max(np.abs(Vs-Vp)) > 1e-9 or t==0):
         Vp = np.copy(Vs)
-        Vs = np.max(np.sum(Tr*(Re + gamma*Vp), axis=2), axis=1)
-        if flag:
-            Vs[termS] = 0
+        for s in range(sizeS):
+            if flag and (s in termS):
+                Vs[s] = 0
+                continue
+
+            overA = []
+            for a in range(sizeA):
+                sumOverS = 0
+                for sd in range(sizeS):
+                    sumOverS += (Tr.get((s, a, sd), 0))*(Re.get((s, a, sd), 0) + gamma*Vp[sd])
+                overA.append(sumOverS)
+            
+            Pis[s] = np.argmax(overA)
+            Vs[s] = np.max(overA)
         t+=1
-    Pis = np.argmax(np.sum(Tr*(Re + gamma*Vs), axis=2), axis=1)
+    
     return Vs, Pis
 
 def adjustPolicy(Qpi, pi, S, A, flag, termS):
@@ -33,7 +46,7 @@ def adjustPolicy(Qpi, pi, S, A, flag, termS):
     for s in range(S):
         if flag and (s in termS):
             continue
-        gtQval = [i for i in range(A) if Qpi[s, i] > Qpi[s, pi[s]]]
+        gtQval = [i for i in range(A) if Qpi.get((s, i), 0) > Qpi.get((s, pi[s]), 0)]
         if gtQval:
             selAct = np.random.choice(gtQval)
         else:
@@ -59,31 +72,50 @@ def howardPolicyIteration(mdp_data):
     Vp = np.zeros(sizeS)
     Vs = np.random.random(sizeS)
     Pis = np.random.randint(sizeA, size=sizeS, dtype='int')
-    allStates = np.arange(0, sizeS, dtype='int')
+
     if flag:
         Vs[termS] = 0
         Pis[termS] = 0
     t=0
     cond = True # True = policy is changed if it is not change we will stop
-    while(cond): #or np.max(np.abs(Vs-Vp)) > 1e-9 or t==0):
+
+    while(cond):
         Vp = np.copy(Vs)
-        Qpi = np.sum(Tr*(Re + gamma*Vp), axis=2)
-        if flag:
-            Qpi[termS, :] = np.zeros(sizeA)
-        Pis, cond = adjustPolicy(Qpi, Pis, sizeS, sizeA, flag, termS)      
-        Vs = Qpi[allStates, Pis] 
+        Qpi = {}
         
-        t2 = 0
+        for s in range(sizeS):
+            if flag and (s in termS):
+                continue
+
+            for a in range(sizeA):
+                sumOverS = 0
+                for sd in range(sizeS):
+                    sumOverS += (Tr.get((s, a, sd), 0))*(Re.get((s, a, sd), 0) + gamma*Vp[sd])
+                Qpi[(s, a)] = sumOverS
+        
+        Pis, cond = adjustPolicy(Qpi, Pis, sizeS, sizeA, flag, termS) 
+        for s in range(sizeS):
+            if flag and (s in termS):
+                Vs[s] = 0
+                continue
+            Vs[s] = Qpi.get((s, Pis[s]), 0)
+        
+        t2 = 0 
         while(np.max(np.abs(Vs-Vp)) > 1e-9 or t2==0):
             Vp = np.copy(Vs)
-            Vs = np.sum(Tr*(Re + gamma*Vp), axis=2)[allStates, Pis]
-            if flag:
-                Vs[termS] = 0
+            for s in range(sizeS):
+                if flag and (s in termS):
+                    Vs[s] = 0
+                    continue
+
+                a = Pis[s]
+                sumOverS = 0
+                for sd in range(sizeS):
+                    sumOverS += (Tr.get((s, a, sd), 0))*(Re.get((s, a, sd), 0) + gamma*Vp[sd])
+                Vs[s] = sumOverS
             t2+=1
-            
-        if flag: # this not required but still
-            Pis[termS] = 0
         t+=1
+    
     return Vs, Pis
 
 def linearProgramming(mdp_data):
@@ -106,7 +138,7 @@ def linearProgramming(mdp_data):
     # constraints
     for s in range(sizeS):
         for a in range(sizeA):
-            problem += pl.lpSum([Tr[s][a][i]*(Re[s][a][i] + gamma*Vp[i]) for i in range(sizeS)]) <= Vp[s]
+            problem += pl.lpSum([(Tr.get((s, a, i), 0))*(Re.get((s, a, i), 0) + gamma*Vp[i]) for i in range(sizeS)]) <= Vp[s]
     
     if flag:
         for i in termS:
@@ -115,6 +147,18 @@ def linearProgramming(mdp_data):
     problem.solve(PULP_CBC_CMD(msg=0))
 
     Vs = np.array([Vp[i].varValue for i in range(sizeS)])
-    Pis = np.argmax(np.sum(Tr*(Re + gamma*Vs), axis=2), axis=1)
 
+    Pis = np.zeros(sizeS)
+    for s in range(sizeS):
+        if flag and (s in termS):
+            Pis[s] = 0
+            continue
+        overA = []
+        for a in range(sizeA):
+            sumOverS = 0
+            for sd in range(sizeS):
+                sumOverS += (Tr.get((s, a, sd), 0))*(Re.get((s, a, sd), 0) + gamma*Vs[sd])
+            overA.append(sumOverS)            
+        Pis[s] = np.argmax(overA)
+    
     return Vs, Pis
