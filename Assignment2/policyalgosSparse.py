@@ -99,8 +99,14 @@ def howardPolicyIteration(mdp_data):
                 Vs[s] = 0
                 continue
             Vs[s] = Qpi.get((s, Pis[s]), 0)
-        
-        t2 = 0 
+            
+        # Solving system of linar equations to get V(s) for sparse and large states action is not
+        # efficient. So the way around I thought of is it iteratively converge it to a solution.
+        # At first glance the lower section may appear exactly similar to Value iteration. Gotcha,
+        # but its not. Here I am convergining it using a fixed policy found using HPI.
+        # Later I found the same thing in literature too, to back correctness of my implementation.
+        # Refer https://www.ics.uci.edu/~dechter/publications/r42a-mdp_report.pdf same as point 4 in refernces
+        t2 = 0
         while(np.max(np.abs(Vs-Vp)) > 1e-9 or t2==0):
             Vp = np.copy(Vs)
             for s in range(sizeS):
@@ -137,18 +143,20 @@ def linearProgramming(mdp_data):
 
     # constraints
     for s in range(sizeS):
+        if s in termS:
+            continue
         for a in range(sizeA):
             problem += pl.lpSum([(Tr.get((s, a, i), 0))*(Re.get((s, a, i), 0) + gamma*Vp[i]) for i in range(sizeS)]) <= Vp[s]
     
     if flag:
         for i in termS:
             problem += Vp[i]==0
-    
+
     problem.solve(PULP_CBC_CMD(msg=0))
 
     Vs = np.array([Vp[i].varValue for i in range(sizeS)])
 
-    Pis = np.zeros(sizeS)
+    Pis = np.zeros(sizeS, dtype='int')
     for s in range(sizeS):
         if flag and (s in termS):
             Pis[s] = 0

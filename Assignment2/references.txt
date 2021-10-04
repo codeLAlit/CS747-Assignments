@@ -1,3 +1,4 @@
 1. https://coin-or.github.io/pulp/CaseStudies/a_blending_problem.html
 2. https://stackoverflow.com/questions/56412471/solving-lp-using-pulp-with-numpy-array
 3. https://stackoverflow.com/questions/38237449/how-to-disable-the-calculations-log-of-pulp
+4. https://www.ics.uci.edu/~dechter/publications/r42a-mdp_report.pdf  Page 5, 6

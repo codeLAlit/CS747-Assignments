@@ -59,8 +59,9 @@ def parseMDPSparse(mdpfile):
     for trans in data[3:-2]:
         trans = trans.split(' ')[1:]
         s, a, sd, r, p = int(trans[0]), int(trans[1]), int(trans[2]), float(trans[3]), float(trans[4])
-        rewards[(s, a, sd)] = r
-        tprob[(s, a, sd)] = p
+        if p!=0:
+            rewards[(s, a, sd)] = r
+            tprob[(s, a, sd)] = p
 
     mdp_dict['rewards'] = rewards
     mdp_dict['tranProb'] = tprob   
