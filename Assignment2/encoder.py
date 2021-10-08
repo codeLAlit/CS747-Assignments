@@ -25,9 +25,8 @@ class MDPCreator():
         for i in range(self.numActions):
             if i==act:
                 l.append(str(val))    
-            else:                
-                l.append(curr[i])
-                
+            else:
+                l.append(curr[i])             
         return ''.join(l)
 
     def getStateType(self, state):
@@ -68,10 +67,10 @@ class MDPCreator():
                     stateType = self.getStateType(envaction)
                     if stateType == 1:
                         # env lost
-                        nextStates.append((envaction, 'T', 1, pis[i]))
+                        nextStates.append(('WIN', 'T', 1, pis[i]))
                     elif stateType == 2:
                         # draw combination
-                        nextStates.append((envaction, 'T', 0, pis[i]))
+                        nextStates.append(('DRORL', 'T', 0, pis[i]))
                     elif stateType == 0:
                         # everthing is normal game continues
                         nextStates.append((envaction, 'N', 0, pis[i]))
@@ -79,10 +78,10 @@ class MDPCreator():
             stateType = self.getStateType(paction)
             if stateType == 1:
                 # player lost
-                nextStates.append((paction, 'T', 0, 1.0))
+                nextStates.append(('DRORL', 'T', 0, 1.0))
             elif stateType == 2:
                 # draw combination
-                nextStates.append((paction, 'T', 0, 1.0))
+                nextStates.append(('DRORL', 'T', 0, 1.0))
         return nextStates
 
     def parseStateFile(self):
@@ -109,20 +108,26 @@ class MDPCreator():
         self.envPS = envPS
 
     def warmup(self):
-        pstates = self.pstates
-        termS = set()
-        for s in pstates:
-            for a in range(self.numActions):
-                if s[a]!='0':
-                    continue
-                nxtStates = self.getNextState(s, a)
-                terminals = [i[0] for i in nxtStates if i[1]=='T']
-                for t in terminals:
-                    termS.add(t)
-        for t in termS:
-            self.states_to_id[t] = self.numStates
-            self.termS.append(self.numStates)
-            self.numStates += 1        
+        # pstates = self.pstates
+        # termS = set()
+        # for s in pstates:
+        #     for a in range(self.numActions):
+        #         if s[a]!='0':
+        #             continue
+        #         nxtStates = self.getNextState(s, a)
+        #         terminals = [i[0] for i in nxtStates if i[1]=='T']
+        #         for t in terminals:
+        #             termS.add(t)
+        # for t in termS:
+        #     self.states_to_id[t] = self.numStates
+        #     self.termS.append(self.numStates)
+        #     self.numStates += 1   
+        self.states_to_id['WIN'] = self.numStates
+        self.termS.append(self.numStates)
+        self.numStates += 1
+        self.states_to_id['DRORL'] = self.numStates
+        self.termS.append(self.numStates)
+        self.numStates += 1     
 
     def printMDPFile(self):
         print("numStates", self.numStates)

@@ -55,17 +55,17 @@ def parseMDPSparse(mdpfile):
 
     rewards = {}
     tprob = {}
-
+    sdall = set()
     for trans in data[3:-2]:
         trans = trans.split(' ')[1:]
         s, a, sd, r, p = int(trans[0]), int(trans[1]), int(trans[2]), float(trans[3]), float(trans[4])
         if p!=0:
             rewards[(s, a, sd)] = r
             tprob[(s, a, sd)] = p
-
+        sdall.add(sd)
     mdp_dict['rewards'] = rewards
     mdp_dict['tranProb'] = tprob   
-
+    mdp_dict['sduni'] = sdall
     return mdp_dict
 
 
@@ -78,7 +78,7 @@ if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--mdp", required=True, type=str)
-    parser.add_argument("--algorithm", '-a', required=False, type=str, default='lp')
+    parser.add_argument("--algorithm", '-a', required=False, type=str, default='vi')
     args = parser.parse_args()
     mdpfile = args.mdp
     algo = args.algorithm

@@ -1,7 +1,7 @@
 import numpy as np
 import pulp as pl
 from pulp.apis.coin_api import PULP_CBC_CMD
-from pulp.constants import LpMaximize
+from pulp.constants import LpMaximize, LpMinimize
 
 def valueIteration(mdp_data):
     np.random.seed(1)
@@ -23,20 +23,13 @@ def valueIteration(mdp_data):
 
     while(np.max(np.abs(Vs-Vp)) > 1e-9 or t==0):
         Vp = np.copy(Vs)
-        for s in range(sizeS):
-            if flag and (s in termS):
-                Vs[s] = 0
-                continue
-
-            overA = []
-            for a in range(sizeA):
-                sumOverS = 0
-                for sd in range(sizeS):
-                    sumOverS += (Tr.get((s, a, sd), 0))*(Re.get((s, a, sd), 0) + gamma*Vp[sd])
-                overA.append(sumOverS)
-            
-            Pis[s] = np.argmax(overA)
-            Vs[s] = np.max(overA)
+        Qs = np.zeros((sizeS, sizeA))
+        for key in Tr.keys():
+            Qs[key[0], key[1]] += Tr[key]*(Re[key]+gamma*Vp[key[2]])
+        Pis = np.argmax(Qs, axis=1)
+        Vs = np.max(Qs, axis=1)
+        if flag:
+            Vs[termS] = 0
         t+=1
     
     return Vs, Pis
@@ -46,7 +39,7 @@ def adjustPolicy(Qpi, pi, S, A, flag, termS):
     for s in range(S):
         if flag and (s in termS):
             continue
-        gtQval = [i for i in range(A) if Qpi.get((s, i), 0) > Qpi.get((s, pi[s]), 0)]
+        gtQval = [i for i in range(A) if Qpi[s, i] > Qpi[s, pi[s]]]
         if gtQval:
             selAct = np.random.choice(gtQval)
         else:
@@ -81,24 +74,14 @@ def howardPolicyIteration(mdp_data):
 
     while(cond):
         Vp = np.copy(Vs)
-        Qpi = {}
-        
-        for s in range(sizeS):
-            if flag and (s in termS):
-                continue
-
-            for a in range(sizeA):
-                sumOverS = 0
-                for sd in range(sizeS):
-                    sumOverS += (Tr.get((s, a, sd), 0))*(Re.get((s, a, sd), 0) + gamma*Vp[sd])
-                Qpi[(s, a)] = sumOverS
+        Qpi = np.zeros((sizeS, sizeA))
+        for key in Tr.keys():
+            Qpi[key[0], key[1]] += Tr[key]*(Re[key]+gamma*Vp[key[2]])
+        if flag:
+            Qpi[termS, :] = 0
         
         Pis, cond = adjustPolicy(Qpi, Pis, sizeS, sizeA, flag, termS) 
-        for s in range(sizeS):
-            if flag and (s in termS):
-                Vs[s] = 0
-                continue
-            Vs[s] = Qpi.get((s, Pis[s]), 0)
+        Vs = Qpi[np.arange(0, sizeS), Pis]
             
         # Solving system of linar equations to get V(s) for sparse and large states action is not
         # efficient. So the way around I thought of is it iteratively converge it to a solution.
@@ -109,16 +92,12 @@ def howardPolicyIteration(mdp_data):
         t2 = 0
         while(np.max(np.abs(Vs-Vp)) > 1e-9 or t2==0):
             Vp = np.copy(Vs)
-            for s in range(sizeS):
-                if flag and (s in termS):
-                    Vs[s] = 0
-                    continue
-
-                a = Pis[s]
-                sumOverS = 0
-                for sd in range(sizeS):
-                    sumOverS += (Tr.get((s, a, sd), 0))*(Re.get((s, a, sd), 0) + gamma*Vp[sd])
-                Vs[s] = sumOverS
+            Qs = np.zeros((sizeS, sizeA))
+            for key in Tr.keys():
+                Qs[key[0], key[1]] += Tr[key]*(Re[key]+gamma*Vp[key[2]])
+            Vs = Qs[np.arange(0, sizeS), Pis]
+            if flag:
+                Vs[termS] = 0
             t2+=1
         t+=1
     
@@ -133,7 +112,7 @@ def linearProgramming(mdp_data):
     Tr = mdp_data['tranProb']
     Re = mdp_data['rewards']
     gamma = mdp_data['gamma']
-    
+    sdall = mdp_data['sduni']
     problem = pl.LpProblem("MDP_Problem", LpMaximize)
     # declaring all the variables
     Vp = pl.LpVariable.dicts("Vs", range(0, sizeS), cat='Continuous')
@@ -146,7 +125,7 @@ def linearProgramming(mdp_data):
         if s in termS:
             continue
         for a in range(sizeA):
-            problem += pl.lpSum([(Tr.get((s, a, i), 0))*(Re.get((s, a, i), 0) + gamma*Vp[i]) for i in range(sizeS)]) <= Vp[s]
+            problem += pl.lpSum([(Tr.get((s, a, i), 0))*(Re.get((s, a, i), 0) + gamma*Vp[i]) for i in sdall]) <= Vp[s]
     
     if flag:
         for i in termS:
@@ -164,7 +143,7 @@ def linearProgramming(mdp_data):
         overA = []
         for a in range(sizeA):
             sumOverS = 0
-            for sd in range(sizeS):
+            for sd in sdall:
                 sumOverS += (Tr.get((s, a, sd), 0))*(Re.get((s, a, sd), 0) + gamma*Vs[sd])
             overA.append(sumOverS)            
         Pis[s] = np.argmax(overA)
