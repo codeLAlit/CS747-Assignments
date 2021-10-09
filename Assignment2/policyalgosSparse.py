@@ -85,7 +85,7 @@ def howardPolicyIteration(mdp_data):
             
         # Solving system of linar equations to get V(s) for sparse and large states action is not
         # efficient. So the way around I thought of is it iteratively converge it to a solution.
-        # At first glance the lower section may appear exactly similar to Value iteration. Gotcha,
+        # At first glance the lower section may appear exactly similar to Value iteration,
         # but its not. Here I am convergining it using a fixed policy found using HPI.
         # Later I found the same thing in literature too, to back correctness of my implementation.
         # Refer https://www.ics.uci.edu/~dechter/publications/r42a-mdp_report.pdf same as point 4 in refernces
@@ -112,24 +112,38 @@ def linearProgramming(mdp_data):
     Tr = mdp_data['tranProb']
     Re = mdp_data['rewards']
     gamma = mdp_data['gamma']
-    sdall = mdp_data['sduni']
+    # some processing for faster execution
+    ts = {}
+    for key in Tr.keys():
+        if ts.get(key[0]):
+            if ts[key[0]].get(key[1]) :
+                ts[key[0]][key[1]].append(key[2])
+            else:
+                ts[key[0]][key[1]] = [key[2]]
+        else:
+            ts[key[0]] = {}
+            ts[key[0]][key[1]] = [key[2]]
+    # problem definition
     problem = pl.LpProblem("MDP_Problem", LpMaximize)
     # declaring all the variables
-    Vp = pl.LpVariable.dicts("Vs", range(0, sizeS), cat='Continuous')
+    Vp = pl.LpVariable.dicts("Vs", range(0, sizeS), lowBound=0.0, cat='Continuous')
 
     # objective function
     problem += -pl.lpSum([Vp[i] for i in range(0, sizeS)])
 
     # constraints
     for s in range(sizeS):
-        if s in termS:
+        if flag and (s in termS):
+            problem += Vp[s]==0
             continue
-        for a in range(sizeA):
-            problem += pl.lpSum([(Tr.get((s, a, i), 0))*(Re.get((s, a, i), 0) + gamma*Vp[i]) for i in sdall]) <= Vp[s]
+        if not ts.get(s):
+            problem += Vp[s] >= 0
+            continue
+        for a in ts[s]:
+            problem += pl.lpSum([Tr[(s, a, sd)]*(Re[(s, a, sd)] + gamma*Vp[sd]) for sd in ts[s][a]]) <= Vp[s]
+        # for a in range(sizeA):
+        #     problem += pl.lpSum([(Tr.get((s, a, i), 0))*(Re.get((s, a, i), 0) + gamma*Vp[i]) for i in sdall]) <= Vp[s]
     
-    if flag:
-        for i in termS:
-            problem += Vp[i]==0
 
     problem.solve(PULP_CBC_CMD(msg=0))
 
@@ -140,12 +154,18 @@ def linearProgramming(mdp_data):
         if flag and (s in termS):
             Pis[s] = 0
             continue
-        overA = []
-        for a in range(sizeA):
+        if not ts.get(s):
+            Vs[s] = 0
+            continue
+        maxOverA = 0
+        act = 0
+        for a in ts[s]:
             sumOverS = 0
-            for sd in sdall:
-                sumOverS += (Tr.get((s, a, sd), 0))*(Re.get((s, a, sd), 0) + gamma*Vs[sd])
-            overA.append(sumOverS)            
-        Pis[s] = np.argmax(overA)
+            for sd in ts[s][a]:
+                sumOverS += (Tr[(s, a, sd)]*(Re[(s, a, sd)] + gamma*Vs[sd]))
+            if sumOverS > maxOverA:
+                maxOverA = sumOverS
+                act = a            
+        Pis[s] = act
     
     return Vs, Pis
