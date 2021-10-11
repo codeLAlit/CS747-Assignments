@@ -136,6 +136,7 @@ class MDPCreator():
         for s in self.pstates:
             for a in range(self.numActions):
                 if s[a]!='0':
+                    print("transition", self.states_to_id[s], a, self.states_to_id['DRORL'], -1e10, 1)
                     continue
                 nxtStates = self.getNextState(s, a)
                 for sd in nxtStates:

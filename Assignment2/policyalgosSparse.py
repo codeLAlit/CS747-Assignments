@@ -4,7 +4,7 @@ from pulp.apis.coin_api import PULP_CBC_CMD
 from pulp.constants import LpMaximize, LpMinimize
 
 def valueIteration(mdp_data):
-    np.random.seed(1)
+    # np.random.seed(1)
     sizeA = mdp_data['numActions']
     sizeS = mdp_data['numStates']
     flag = True if mdp_data['type']=='episodic' else False
@@ -20,7 +20,6 @@ def valueIteration(mdp_data):
         Vs[termS] = 0
 
     t = 0
-
     while(np.max(np.abs(Vs-Vp)) > 1e-9 or t==0):
         Vp = np.copy(Vs)
         Qs = np.zeros((sizeS, sizeA))
@@ -39,7 +38,7 @@ def adjustPolicy(Qpi, pi, S, A, flag, termS):
     for s in range(S):
         if flag and (s in termS):
             continue
-        gtQval = [i for i in range(A) if Qpi[s, i] > Qpi[s, pi[s]]]
+        gtQval = [i for i in range(A) if Qpi[s, i] > Qpi[s, pi[s]] + 1e-9]
         if gtQval:
             selAct = np.random.choice(gtQval)
         else:
@@ -54,7 +53,7 @@ def adjustPolicy(Qpi, pi, S, A, flag, termS):
     return newPi.astype('int'), cond
 
 def howardPolicyIteration(mdp_data):
-    np.random.seed(20)
+    # np.random.seed(20)
     sizeA = mdp_data['numActions']
     sizeS = mdp_data['numStates']
     flag = True if mdp_data['type']=='episodic' else False
@@ -104,7 +103,7 @@ def howardPolicyIteration(mdp_data):
     return Vs, Pis
 
 def linearProgramming(mdp_data):
-    np.random.seed(30)
+    # np.random.seed(30)
     sizeA = mdp_data['numActions']
     sizeS = mdp_data['numStates']
     flag = True if mdp_data['type']=='episodic' else False
