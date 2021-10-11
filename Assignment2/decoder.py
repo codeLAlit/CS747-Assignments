@@ -37,13 +37,9 @@ class ValueDecoder():
     def getProbs(self):
         for i in range(self.numStates):
             prob = [0.0]*self.numActions
-            if self.value[i]!=0:
-                prob[int(self.policy[i])] = 1.0
-            else:
-                avail_actions = [j for j in range(self.numActions) if self.pstates[i][j]=='0']
-                for j in avail_actions:
-                    prob[j] = 1.0/len(avail_actions)
+            prob[int(self.policy[i])] = 1.0
             self.probs.append(prob)
+
     def printPolicy(self):
         print(self.pID)
         for i in range(self.numStates):

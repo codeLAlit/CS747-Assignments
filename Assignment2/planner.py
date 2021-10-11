@@ -65,13 +65,12 @@ def parseMDPSparse(mdpfile):
         sdall.add(sd)
     mdp_dict['rewards'] = rewards
     mdp_dict['tranProb'] = tprob   
-    mdp_dict['sduni'] = sdall
     return mdp_dict
 
 
 def printData(Vs, Pis):
     for s in range(len(Vs)):
-        print("{}\t{}\n".format(Vs[s], Pis[s]))
+        print("{} {}".format(Vs[s], Pis[s]))
     return
 
 if __name__=='__main__':

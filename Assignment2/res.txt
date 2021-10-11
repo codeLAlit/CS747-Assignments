@@ -1,0 +1,6 @@
+task 2 ( in %)
+policy  player  p1win   p2win   draw
+p2_1    p1      100     0       0
+p2_2    p1      71.28    18.22    10.5
+p1_1    p2      100     0       0
+p1_2    p2      0.5     99.3    0.2
