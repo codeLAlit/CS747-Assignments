@@ -1,6 +1,6 @@
 #!/bin/bash
 apt-get install -y bc
-pip install pyglot gym
+pip install pyglet gym
 pushd () {
     command pushd "$@" > /dev/null
 }

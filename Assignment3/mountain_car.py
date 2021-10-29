@@ -14,6 +14,7 @@ import math
 import time
 import argparse
 import matplotlib.pyplot as plt
+from numpy.core import numerictypes
 
 
 class sarsaAgent():
@@ -32,12 +33,12 @@ class sarsaAgent():
         self.epsilon_T1 = 0.1
         self.epsilon_T2 = 0.1
         self.learning_rate_T1 = 0.23
-        self.learning_rate_T2 = 0.01
+        self.learning_rate_T2 = 0.23/3
         self.weights_T1 = np.zeros((41*40, 3))
-        self.weights_T2 = np.zeros((1001*1000, 3))
+        self.weights_T2 = np.zeros((41*40*3, 3))
         self.discount = 1.0
-        self.train_num_episodes = 1000
-        self.test_num_episodes = 100
+        self.train_num_episodes = 10000
+        self.test_num_episodes = 2
         self.upper_bounds = [self.env.observation_space.high[0], self.env.observation_space.high[1]]
         self.lower_bounds = [self.env.observation_space.low[0], self.env.observation_space.low[1]]
 
@@ -49,30 +50,63 @@ class sarsaAgent():
 
     def get_table_features(self, obs):
         xmin = self.lower_bounds[0]
-        xdisc = (self.upper_bounds[0] - xmin)/40
+        disc = 40
+        xdisc = (self.upper_bounds[0] - xmin)/disc
         vmin = self.lower_bounds[1]
-        vdisc = (self.upper_bounds[1] - vmin)/40
-        vvals = (self.upper_bounds[1]-self.lower_bounds[1])//vdisc
+        vdisc = (self.upper_bounds[1] - vmin)/disc
         x, v = obs[0], obs[1]
-        state = ((x-xmin)//xdisc)*vvals + (v-vmin)//vdisc
-        return [state]
+        activeTile = int(((x-xmin)//xdisc)*disc + (v-vmin)//vdisc)
+        return [activeTile]
 
     '''
     - get_better_features: Graded
     - Use this function to solve the Task-2
     - It should return representation of state.
     '''
+    def rbfTiling(self, obs):
+        numTilings = 3
+        numTilesInOne = 40*41
+        centers = np.array([[0.4, 0], [-0.8, 0], [0, 0]])
+        sig = np.array([[0.12, 0.07], [0.12, 0.07], [0.12, 0.07]])
+        divs = 40
+        xdisc = 1.8/divs
+        vdisc = 0.14/divs
+        activeTiles = []
+        for i in range(numTilings):
+            rbfvals = (np.exp(-(obs-centers[i])**2/(2*sig[i]**2)))*np.array([1.8, 0.14])
+            aT = int((rbfvals[0]//xdisc)*divs+(rbfvals[1]//vdisc))
+            activeTiles.append(numTilesInOne*i+aT)
+        return activeTiles
+
+    def multiLayerTiling(self, obs):
+        x, v = obs[0], obs[1]
+        numTilesInOne = 40*41
+        numTilings = 3
+        xmin = self.lower_bounds[0]
+        xmax = self.upper_bounds[0]
+        divs = 40
+        vmin = self.lower_bounds[1]
+        vmax = self.upper_bounds[1]
+        xdisc = (xmax-xmin)/divs
+        vdisc = (vmax-vmin)/divs
+
+        xoffset = xdisc/numTilings
+        voffset = vdisc/numTilings
+
+        activeTiles = []
+
+        for i in range(numTilings):
+            xmini = xmin + xoffset*i
+            vmini = vmin + voffset*i
+            activeTile = int(((x-xmini)//xdisc)*divs + (v-vmini)//vdisc)
+            activeTiles.append(numTilesInOne*i+activeTile)
+
+        return activeTiles
 
     def get_better_features(self, obs):
         obs = np.array(obs)
-        centers = np.array([0.4, 0])
-        sig = np.array([12, 0.07])
-        divs = 1000
-        xdisc = 1/divs
-        vdisc = 1/divs
-        rbfvals = (np.exp(-(obs-centers)**2/(2*sig**2)))
-        state = (rbfvals[0]//xdisc)*divs+(rbfvals[1]//vdisc)
-        return int(state)
+        features = self.multiLayerTiling(obs)
+        return features
 
     '''
     - choose_action: Graded.
