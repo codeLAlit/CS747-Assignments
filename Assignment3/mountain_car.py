@@ -29,14 +29,14 @@ class sarsaAgent():
 
     def __init__(self):
         self.env = gym.make('MountainCar-v0')
-        self.epsilon_T1 = None
-        self.epsilon_T2 = None
-        self.learning_rate_T1 = None
-        self.learning_rate_T2 = None
-        self.weights_T1 = None
-        self.weights_T2 = None
+        self.epsilon_T1 = 0.1
+        self.epsilon_T2 = 0.1
+        self.learning_rate_T1 = 0.23
+        self.learning_rate_T2 = 0.01
+        self.weights_T1 = np.zeros((41*40, 3))
+        self.weights_T2 = np.zeros((1001*1000, 3))
         self.discount = 1.0
-        self.train_num_episodes = 10000
+        self.train_num_episodes = 1000
         self.test_num_episodes = 100
         self.upper_bounds = [self.env.observation_space.high[0], self.env.observation_space.high[1]]
         self.lower_bounds = [self.env.observation_space.low[0], self.env.observation_space.low[1]]
@@ -48,7 +48,14 @@ class sarsaAgent():
     '''
 
     def get_table_features(self, obs):
-        return None
+        xmin = self.lower_bounds[0]
+        xdisc = (self.upper_bounds[0] - xmin)/40
+        vmin = self.lower_bounds[1]
+        vdisc = (self.upper_bounds[1] - vmin)/40
+        vvals = (self.upper_bounds[1]-self.lower_bounds[1])//vdisc
+        x, v = obs[0], obs[1]
+        state = ((x-xmin)//xdisc)*vvals + (v-vmin)//vdisc
+        return [state]
 
     '''
     - get_better_features: Graded
@@ -57,7 +64,15 @@ class sarsaAgent():
     '''
 
     def get_better_features(self, obs):
-        return None
+        obs = np.array(obs)
+        centers = np.array([0.4, 0])
+        sig = np.array([12, 0.07])
+        divs = 1000
+        xdisc = 1/divs
+        vdisc = 1/divs
+        rbfvals = (np.exp(-(obs-centers)**2/(2*sig**2)))
+        state = (rbfvals[0]//xdisc)*divs+(rbfvals[1]//vdisc)
+        return int(state)
 
     '''
     - choose_action: Graded.
@@ -67,7 +82,13 @@ class sarsaAgent():
     '''
 
     def choose_action(self, state, weights, epsilon):
-        return None
+        path = np.random.binomial(1, epsilon)
+        if path==0: # choose action with highest Q value
+            allActs = np.array([np.sum(weights[state, a]) for a in range(3)])
+            act = np.random.choice(np.flatnonzero(allActs==np.max(allActs)))
+        else: # choose action randomly
+            act = np.random.choice([0, 1, 2])
+        return act
 
     '''
     - sarsa_update: Graded.
@@ -78,7 +99,8 @@ class sarsaAgent():
     '''
 
     def sarsa_update(self, state, action, reward, new_state, new_action, learning_rate, weights):
-        return None
+        weights[state, action] += learning_rate*(reward + self.discount*np.sum(weights[new_state, new_action])-np.sum(weights[state, action]))
+        return weights
 
     '''
     - train: Ungraded.
